@@ -126,13 +126,32 @@
   .profile-sub{ color: rgba(244,241,231,0.5); font-size: 13px; margin-bottom: 34px; font-family:'IBM Plex Mono', monospace; }
   .profile-grid{ display:flex; flex-wrap:wrap; gap: 22px; justify-content:center; max-width: 560px; }
   .profile-tile{ display:flex; flex-direction:column; align-items:center; gap: 10px; cursor:pointer; width: 96px; }
-  .profile-avatar{ width: 84px; height:84px; border-radius: 10px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Sans Condensed', sans-serif; font-weight:700; font-size: 30px; color:#fff; border: 2px solid transparent; transition: border-color 0.15s, transform 0.15s; }
+  .profile-avatar{ width: 84px; height:84px; border-radius: 10px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Sans Condensed', sans-serif; font-weight:700; font-size: 30px; color:#fff; border: 2px solid transparent; transition: border-color 0.15s, transform 0.15s; overflow: hidden; }
+  .avatar-img{ width:100%; height:100%; border-radius:inherit; object-fit:cover; display:block; }
   .profile-tile:hover .profile-avatar{ border-color: rgba(244,241,231,0.6); transform: scale(1.04); }
   .profile-tile-name{ color: rgba(244,241,231,0.75); font-size: 13.5px; }
   .profile-add-tile .profile-avatar{ background: transparent; border: 2px dashed rgba(244,241,231,0.3); color: rgba(244,241,231,0.5); font-size: 30px; font-weight:400; }
   .profile-add-tile:hover .profile-avatar{ border-color: rgba(244,241,231,0.7); color:#f4f1e7; }
   .setup-note{ max-width: 480px; color: rgba(244,241,231,0.6); font-size: 13px; line-height:1.6; margin-top: 30px; font-family:'IBM Plex Mono', monospace; background: rgba(244,241,231,0.06); padding: 16px 18px; border-radius: 6px; text-align:left; }
   .setup-note b{ color:#f4f1e7; }
+
+  .settings-section{ margin-bottom: 26px; }
+  .settings-section:last-child{ margin-bottom:0; }
+  .settings-section-title{ font-family:'IBM Plex Sans Condensed', sans-serif; font-weight:700; font-size:15px; color:var(--ink); margin-bottom:12px; }
+  .settings-avatar-row{ display:flex; align-items:center; gap:16px; margin-bottom: 4px; }
+  .settings-avatar{ width:64px; height:64px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Sans Condensed', sans-serif; font-weight:700; font-size:24px; color:#fff; cursor:pointer; overflow:hidden; flex-shrink:0; position:relative; }
+  .settings-avatar::after{ content:'Change'; position:absolute; inset:0; background:rgba(0,0,0,0.5); color:#fff; font-size:10px; font-family:'IBM Plex Mono',monospace; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.15s; }
+  .settings-avatar:hover::after{ opacity:1; }
+  .settings-name-row{ display:flex; gap:10px; margin-top:14px; }
+  .settings-name-row input{ flex:1; }
+  .resource-row{ display:flex; align-items:center; gap:12px; padding:10px 12px; background:rgba(255,255,255,0.35); border-radius:var(--radius); margin-bottom:8px; }
+  .resource-row .name{ flex:1; font-size:14px; font-weight:500; }
+  .resource-del{ background:none; border:1px solid rgba(189,79,46,0.4); color:var(--rust); font-size:12px; font-family:'IBM Plex Mono', monospace; padding:5px 10px; border-radius:var(--radius); cursor:pointer; }
+  .resource-del:hover{ background: var(--rust-bg); }
+  .danger-zone{ border:1px solid rgba(189,79,46,0.35); border-radius: var(--radius); padding:16px; background: rgba(189,79,46,0.05); }
+  .danger-zone p{ font-size:12.5px; color:var(--muted-2); margin: 0 0 12px; line-height:1.5; }
+  .btn-danger{ background: var(--rust); color:#fff; }
+  .btn-danger:hover{ filter:brightness(1.1); }
 
   @media (max-width: 480px){
     .sheet{ padding: 26px 18px 24px; }
@@ -147,7 +166,10 @@
   <div class="topbar" id="topbar" style="display:none;">
     <button class="icon-btn" id="addCourseBtn" title="Add a course">+</button>
     <span class="brand"><b>Study Ledger</b><span class="switch-link" id="switchProfileBtn">switch profile</span></span>
-    <button class="icon-btn" id="listCoursesBtn" title="All courses">☰</button>
+    <div style="display:flex; gap:8px;">
+      <button class="icon-btn" id="listCoursesBtn" title="All courses">☰</button>
+      <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
+    </div>
   </div>
   <div class="sheet" id="sheet" style="display:none;"></div>
   <div id="profileScreen"></div>
@@ -213,6 +235,10 @@ const SUPABASE_ANON_KEY = "sb_publishable_DwNCqjxwYuM-L9poY7BE_Q_bY1QEFi8";
   function escapeHtml(s){
     return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
+  function avatarInner(p){
+    if(p && p.avatar) return `<img class="avatar-img" src="${p.avatar}" alt="">`;
+    return (p && p.name ? p.name : '?').trim().charAt(0).toUpperCase();
+  }
 
   if(configured){
     db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -255,7 +281,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_DwNCqjxwYuM-L9poY7BE_Q_bY1QEFi8";
     const grid = document.getElementById('profileGrid');
     grid.innerHTML = profiles.map(p => `
       <div class="profile-tile" onclick="App.selectProfile('${p.id}')">
-        <div class="profile-avatar" style="background:${p.color}">${(p.name||'?').trim().charAt(0).toUpperCase()}</div>
+        <div class="profile-avatar" style="${p.avatar ? '' : 'background:'+p.color}">${avatarInner(p)}</div>
         <div class="profile-tile-name">${escapeHtml(p.name)}</div>
       </div>
     `).join('') + `
@@ -292,287 +318,4 @@ const SUPABASE_ANON_KEY = "sb_publishable_DwNCqjxwYuM-L9poY7BE_Q_bY1QEFi8";
       const d = document.createElement('div');
       d.className = 'swatch' + (col === selectedColor ? ' selected' : '');
       d.style.background = col;
-      d.onclick = () => { selectedColor = col; [...sw.children].forEach(c=>c.classList.remove('selected')); d.classList.add('selected'); };
-      sw.appendChild(d);
-    });
-    document.getElementById('profileNameInput').focus();
-    window._selectedProfileColor = () => selectedColor;
-  }
-
-  async function fetchCourses(){
-    const { data, error } = await db.from('courses').select('*').eq('profile_id', currentProfile.id).order('created_at');
-    if(!error) courses = data || [];
-    return !error;
-  }
-  async function fetchEntries(){
-    const { data, error } = await db.from('entries').select('*').eq('profile_id', currentProfile.id).order('created_at');
-    if(!error) entries = data || [];
-    return !error;
-  }
-  async function refreshAll(silent){
-    const ok1 = await fetchCourses();
-    const ok2 = await fetchEntries();
-    if(ok1 && ok2) render();
-    else if(!silent) showToast('Could not reach the database');
-  }
-  function attachListeners(){
-    if(refreshTimer) clearInterval(refreshTimer);
-    refreshAll(false);
-    refreshTimer = setInterval(() => refreshAll(true), AUTO_REFRESH_MS);
-  }
-
-  function courseEntries(courseId){
-    return entries.filter(e => e.course_id === courseId).sort((a,b)=>{
-      if(a.date !== b.date) return a.date < b.date ? 1 : -1;
-      return (b.time||'') < (a.time||'') ? -1 : 1;
-    });
-  }
-  function lastEntryDate(courseId){
-    const es = courseEntries(courseId);
-    return es.length ? es[0].date : null;
-  }
-  function doneToday(courseId){ return lastEntryDate(courseId) === todayStr(); }
-
-  function renderHome(){
-    const total = courses.length;
-    const doneCount = courses.filter(c => doneToday(c.id)).length;
-    let statusHtml;
-    if(total === 0){
-      statusHtml = `
-        <div class="empty">
-          <div class="big">No courses yet</div>
-          <div>Add DSA, System Design, or anything else you're grinding on.</div>
-          <button class="btn btn-primary" onclick="App.openAddCourse()">+ Add your first course</button>
-        </div>`;
-    } else {
-      statusHtml = `<div class="status-grid">` + courses.map(c => {
-        const done = doneToday(c.id);
-        return `
-        <div class="status-row" onclick="App.openCourse('${c.id}')">
-          <span class="dot ${done?'done':'pending'}"></span>
-          <span class="status-name">${escapeHtml(c.name)}</span>
-          <span class="status-tag ${done?'done':'pending'}">${done ? 'DONE' : 'PENDING'}</span>
-        </div>`;
-      }).join('') + `</div>`;
-    }
-    sheet.innerHTML = `
-      <div class="sheet-inner">
-        <div class="hero-row">
-          <div class="hero-num">${total}</div>
-          <div class="hero-label">course${total===1?'':'s'} tracked</div>
-        </div>
-        <div class="hero-sub">${currentProfile.name} · ${doneCount} of ${total} updated today</div>
-        <hr class="divider">
-        <div class="section-label"><span>Today's status</span><span class="date">${todayHeaderDate()}</span></div>
-        ${statusHtml}
-      </div>`;
-  }
-
-  function renderCourseList(){
-    let body;
-    if(courses.length === 0){
-      body = `<div class="empty"><div class="big">Nothing here yet</div><div>Tap the + on the home screen to add a course.</div></div>`;
-    } else {
-      body = `<div class="course-grid">` + courses.map(c => {
-        const es = courseEntries(c.id);
-        const initial = c.name.trim().charAt(0).toUpperCase() || '?';
-        const stat = es.length ? `${es.length} entr${es.length===1?'y':'ies'} · last ${formatDateLabel(es[0].date).split(' · ')[0].toLowerCase()}` : 'No entries yet';
-        return `
-        <div class="course-card" onclick="App.openCourse('${c.id}')">
-          <div class="course-chip" style="background:${c.color}">${initial}</div>
-          <div class="course-meta"><div class="name">${escapeHtml(c.name)}</div><div class="stat">${stat}</div></div>
-          <span class="chev">›</span>
-        </div>`;
-      }).join('') + `</div>`;
-    }
-    sheet.innerHTML = `
-      <div class="sheet-inner">
-        <div class="section-label" style="margin-bottom:18px;">
-          <span style="font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:21px;color:var(--ink);">All courses</span>
-        </div>
-        ${body}
-      </div>`;
-  }
-
-  function renderCourseDetail(courseId){
-    const c = courses.find(x => x.id === courseId);
-    if(!c){ view.name='home'; return renderHome(); }
-    const es = courseEntries(courseId);
-    const groups = [];
-    let currentDate = null, currentGroup = null;
-    es.forEach(e => {
-      if(e.date !== currentDate){ currentDate = e.date; currentGroup = { date: e.date, items: [] }; groups.push(currentGroup); }
-      currentGroup.items.push(e);
-    });
-    let timelineHtml;
-    if(groups.length === 0){
-      timelineHtml = `<div class="empty"><div class="big">No entries yet</div><div>Log today's work to start the streak.</div></div>`;
-    } else {
-      timelineHtml = `<div class="timeline">` + groups.map(g => `
-        <div class="tl-day">
-          <div class="tl-date">${formatDateLabel(g.date)}</div>
-          ${g.items.map(item => `
-            <div class="tl-entry">
-              <div class="tl-time">${item.time ? formatTime(item.time) : ''}</div>
-              <div class="tl-text">${escapeHtml(item.text)}</div>
-              <button class="tl-del" title="Delete entry" onclick="App.deleteEntry('${item.id}')">✕</button>
-            </div>`).join('')}
-        </div>`).join('') + `</div>`;
-    }
-    const done = doneToday(courseId);
-    sheet.innerHTML = `
-      <div class="sheet-inner">
-        <div class="back-row" onclick="App.goHome()">← Home</div>
-        <div class="detail-head">
-          <div class="course-chip" style="background:${c.color}; width:44px;height:44px;font-size:18px;">${c.name.trim().charAt(0).toUpperCase()||'?'}</div>
-          <div style="flex:1;"><div class="detail-title">${escapeHtml(c.name)}</div></div>
-          <span class="streak-pill">${es.length} entr${es.length===1?'y':'ies'}</span>
-        </div>
-        <button class="btn ${done?'btn-ghost':'btn-primary'}" onclick="App.openAddEntry('${c.id}')">
-          ${done ? '+ Add another update' : "+ Add today's work"}
-        </button>
-        <hr class="divider">
-        <div class="section-label"><span>Timeline</span></div>
-        ${timelineHtml}
-      </div>`;
-  }
-
-  function openAddCourseModal(){
-    const overlay = document.createElement('div');
-    overlay.className = 'overlay'; overlay.id = 'modalOverlay';
-    overlay.innerHTML = `
-      <div class="panel">
-        <div class="panel-head"><div class="panel-title">Add a course</div><button class="panel-close" onclick="App.closeModal()">✕</button></div>
-        <label>Course name</label>
-        <input type="text" id="courseNameInput" placeholder="e.g. Dynamic Programming, System Design" maxlength="60">
-        <label>Color</label>
-        <div class="swatches" id="colorSwatches"></div>
-        <div class="panel-actions">
-          <button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="App.submitAddCourse()">Add course</button>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', e => { if(e.target === overlay) closeModal(); });
-    let selectedColor = COLORS[courses.length % COLORS.length];
-    const sw = document.getElementById('colorSwatches');
-    COLORS.forEach(col => {
-      const d = document.createElement('div');
-      d.className = 'swatch' + (col === selectedColor ? ' selected' : '');
-      d.style.background = col;
-      d.onclick = () => { selectedColor = col; [...sw.children].forEach(c=>c.classList.remove('selected')); d.classList.add('selected'); };
-      sw.appendChild(d);
-    });
-    document.getElementById('courseNameInput').focus();
-    window._selectedColor = () => selectedColor;
-  }
-
-  function openAddEntryModal(courseId){
-    const c = courses.find(x => x.id === courseId);
-    const overlay = document.createElement('div');
-    overlay.className = 'overlay'; overlay.id = 'modalOverlay';
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2,'0'), mm = String(now.getMinutes()).padStart(2,'0');
-    overlay.innerHTML = `
-      <div class="panel">
-        <div class="panel-head"><div class="panel-title">Log progress</div><button class="panel-close" onclick="App.closeModal()">✕</button></div>
-        <label>${escapeHtml(c.name)} — what did you do?</label>
-        <textarea id="entryText" placeholder="e.g. Solved 5 sliding window problems, reviewed binary search patterns"></textarea>
-        <label>Date</label>
-        <input type="date" id="entryDate" value="${todayStr()}">
-        <label>Time</label>
-        <input type="time" id="entryTime" value="${hh}:${mm}">
-        <div class="panel-actions">
-          <button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="App.submitAddEntry('${courseId}')">Save entry</button>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', e => { if(e.target === overlay) closeModal(); });
-    document.getElementById('entryText').focus();
-  }
-
-  function closeModal(){ const m = document.getElementById('modalOverlay'); if(m) m.remove(); }
-
-  window.App = {
-    openAddProfile(){ openAddProfileModal(); },
-    async submitAddProfile(){
-      const input = document.getElementById('profileNameInput');
-      const name = input.value.trim();
-      if(!name){ input.focus(); return; }
-      const color = window._selectedProfileColor ? window._selectedProfileColor() : COLORS[0];
-      const { data, error } = await db.from('profiles').insert({ name, color, created_at: Date.now() }).select().single();
-      if(error){ showToast('Could not create profile'); return; }
-      closeModal();
-      await App.selectProfile(data.id);
-    },
-    async selectProfile(id){
-      const p = profiles.find(x => x.id === id);
-      if(p){ currentProfile = p; }
-      else{
-        const { data } = await db.from('profiles').select('*').eq('id', id).single();
-        currentProfile = data;
-      }
-      localStorage.setItem('study-ledger-last-profile', id);
-      topbar.style.display = 'flex';
-      sheet.style.display = 'block';
-      profileScreen.style.display = 'none';
-      view = { name:'home', courseId:null };
-      attachListeners();
-    },
-    switchProfile(){
-      if(refreshTimer) clearInterval(refreshTimer);
-      currentProfile = null;
-      renderProfileScreen();
-    },
-    openAddCourse(){ openAddCourseModal(); },
-    async submitAddCourse(){
-      const input = document.getElementById('courseNameInput');
-      const name = input.value.trim();
-      if(!name){ input.focus(); return; }
-      const color = window._selectedColor ? window._selectedColor() : COLORS[0];
-      const { error } = await db.from('courses').insert({ profile_id: currentProfile.id, name, color, created_at: Date.now() });
-      if(error){ showToast('Could not save course'); return; }
-      closeModal();
-      showToast('Course added');
-      await refreshAll(true);
-    },
-    openCourse(id){ view = { name:'detail', courseId:id }; render(); },
-    goHome(){ view = { name:'home', courseId:null }; render(); },
-    openAddEntry(courseId){ openAddEntryModal(courseId); },
-    async submitAddEntry(courseId){
-      const text = document.getElementById('entryText').value.trim();
-      const date = document.getElementById('entryDate').value || todayStr();
-      const time = document.getElementById('entryTime').value;
-      if(!text) return;
-      const { error } = await db.from('entries').insert({ profile_id: currentProfile.id, course_id: courseId, date, time, text, created_at: Date.now() });
-      if(error){ showToast('Could not save entry'); return; }
-      closeModal();
-      showToast('Progress logged');
-      await refreshAll(true);
-    },
-    async deleteEntry(entryId){
-      const { error } = await db.from('entries').delete().eq('id', entryId);
-      if(error){ showToast('Could not delete entry'); return; }
-      showToast('Entry removed');
-      await refreshAll(true);
-    },
-    closeModal(){ closeModal(); }
-  };
-
-  document.getElementById('addCourseBtn').addEventListener('click', openAddCourseModal);
-  document.getElementById('listCoursesBtn').addEventListener('click', () => { view = { name:'list', courseId:null }; render(); });
-  document.getElementById('switchProfileBtn').addEventListener('click', () => App.switchProfile());
-
-  function render(){
-    if(!currentProfile) return;
-    if(view.name === 'home') renderHome();
-    else if(view.name === 'list') renderCourseList();
-    else if(view.name === 'detail') renderCourseDetail(view.courseId);
-  }
-
-  renderProfileScreen();
-})();
-</script>
-</body>
-</html>
+      d.onclick = () => { selectedColor = col; [...sw.children].forEach(c=>c.classList.remove('selected'))
